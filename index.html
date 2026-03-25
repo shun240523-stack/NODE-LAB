@@ -28,6 +28,23 @@
             top: 0;
             left: 0;
             z-index: -1;
+            filter: contrast(1.1) brightness(1.1);
+        }
+
+        /* Scanline Effect Overlay */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 1000;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            opacity: 0.3;
         }
 
         /* Loading Screen */
@@ -65,7 +82,7 @@
             left: 0;
             width: 100%;
             height: 80px;
-            z-index: 1000;
+            z-index: 1100;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -89,6 +106,7 @@
         .nav-item:hover, .nav-item.active {
             color: var(--neon-blue);
             text-shadow: 0 0 15px var(--neon-glow);
+            transform: skewX(-5deg);
         }
         .nav-item::after {
             content: '';
@@ -165,7 +183,6 @@
             position: relative;
         }
         
-        /* Main Timeline Connecting Line */
         .main-timeline-line {
             position: absolute;
             top: 50%;
@@ -212,15 +229,21 @@
             background: var(--bg-dark);
             z-index: 10;
             cursor: pointer;
+            animation: nodePulse 3s infinite ease-in-out;
         }
+        @keyframes nodePulse {
+            0%, 100% { box-shadow: 0 0 5px var(--neon-blue); }
+            50% { box-shadow: 0 0 20px var(--neon-blue); }
+        }
+
         .history-node.active {
             background: var(--neon-blue);
             box-shadow: 0 0 35px var(--neon-blue), 0 0 10px #fff;
             transform: scale(2.2);
             border-color: #fff;
+            animation: none;
         }
         
-        /* Vertical line to node */
         .node-vertical-line {
             position: absolute;
             width: 1px;
@@ -273,6 +296,24 @@
             background: rgba(255, 255, 255, 0.02);
             backdrop-filter: blur(25px);
             border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.01), transparent);
+            transform: rotate(45deg);
+            transition: all 0.7s;
+            pointer-events: none;
+        }
+        .glass-panel:hover::after {
+            left: 100%;
+            top: 100%;
         }
 
         .btn-action {
@@ -284,15 +325,34 @@
             text-transform: uppercase;
             border: 1px solid rgba(255,255,255,0.1);
             transition: all 0.3s ease;
+            overflow: hidden;
         }
         .btn-action:hover {
             border-color: var(--neon-blue);
             color: var(--neon-blue);
             background: rgba(0, 170, 255, 0.05);
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.2);
+            letter-spacing: 0.4em;
+        }
+
+        /* Custom Cursor for better interaction feel */
+        #cursor-effect {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--neon-blue);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.1s ease, opacity 0.3s ease;
+            transform: translate(-50%, -50%);
+            opacity: 0;
         }
     </style>
 </head>
 <body>
+
+    <div id="cursor-effect"></div>
 
     <!-- Loading Screen -->
     <div id="loader">
@@ -349,15 +409,15 @@
                             これまでの「自己」は肉体という器に縛られてきました。私たちはその器をデータ・ネットワークへと移し替えることで、物理的な老化や消失という概念を過去のものにします。
                         </p>
                         <div class="space-y-10">
-                            <div class="flex gap-6 group">
-                                <div class="w-10 h-10 border border-blue-500/40 flex items-center justify-center font-orbitron text-blue-500 text-xs">01</div>
+                            <div class="flex gap-6 group cursor-pointer">
+                                <div class="w-10 h-10 border border-blue-500/40 flex items-center justify-center font-orbitron text-blue-500 text-xs transition-all group-hover:bg-blue-500 group-hover:text-white">01</div>
                                 <div>
                                     <h4 class="font-bold mb-2 tracking-widest">知性の恒久化</h4>
                                     <p class="text-sm text-gray-500">個人の知識や感情の揺らぎさえも、高純度なデータとして保存します。</p>
                                 </div>
                             </div>
-                            <div class="flex gap-6 group">
-                                <div class="w-10 h-10 border border-blue-500/40 flex items-center justify-center font-orbitron text-blue-500 text-xs">02</div>
+                            <div class="flex gap-6 group cursor-pointer">
+                                <div class="w-10 h-10 border border-blue-500/40 flex items-center justify-center font-orbitron text-blue-500 text-xs transition-all group-hover:bg-blue-500 group-hover:text-white">02</div>
                                 <div>
                                     <h4 class="font-bold mb-2 tracking-widest">分散型意識ネットワーク</h4>
                                     <p class="text-sm text-gray-500">一箇所に留まらない、地球規模で拡張される意識の在り方を提案します。</p>
@@ -371,7 +431,7 @@
                             "死とはデータの欠落である。適切なバックアップと同期があれば、意識は永遠に輝き続ける。"
                         </p>
                         <div class="flex items-center gap-4 pt-8 border-t border-white/5">
-                            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-900 to-blue-500"></div>
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-900 to-blue-500 shadow-[0_0_20px_rgba(0,170,255,0.4)]"></div>
                             <div>
                                 <div class="text-[10px] font-bold tracking-widest">KYOJI NODE</div>
                                 <div class="text-[8px] text-gray-500 tracking-widest uppercase">Lead Visionary</div>
@@ -391,7 +451,6 @@
             
             <div class="history-container">
                 <div class="history-viewport" id="history-viewport">
-                    <!-- The connecting line is placed inside the viewport but behind the track -->
                     <div class="main-timeline-line" id="main-timeline-line"></div>
                     <div class="history-track" id="history-track"></div>
                     <div class="scroll-hint">
@@ -419,17 +478,17 @@
                 <h2 class="font-orbitron text-4xl font-bold tracking-[0.3em] mb-20 reveal">CORE TECH</h2>
                 <div class="grid md:grid-cols-3 gap-10 mb-20">
                     <div class="glass-panel p-10 hover:border-blue-500/50 transition-all group reveal">
-                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500">T-01</div>
+                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500 group-hover:scale-110 transition-transform">T-01</div>
                         <h4 class="font-bold tracking-widest mb-4">量子スキャン</h4>
                         <p class="text-sm text-gray-400 font-light">シナプス結合の全パターンを原子レベルで瞬時にデジタル写像化する基幹技術。</p>
                     </div>
                     <div class="glass-panel p-10 hover:border-blue-500/50 transition-all group reveal" style="transition-delay: 0.1s;">
-                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500">T-02</div>
+                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500 group-hover:scale-110 transition-transform">T-02</div>
                         <h4 class="font-bold tracking-widest mb-4">意識同期プロトコル</h4>
                         <p class="text-sm text-gray-400 font-light">仮想空間と現実世界の間で意識の整合性を保つための超低遅延双方向通信。</p>
                     </div>
                     <div class="glass-panel p-10 hover:border-blue-500/50 transition-all group reveal" style="transition-delay: 0.2s;">
-                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500">T-03</div>
+                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500 group-hover:scale-110 transition-transform">T-03</div>
                         <h4 class="font-bold tracking-widest mb-4">存在証明レジャー</h4>
                         <p class="text-sm text-gray-400 font-light">「その意識が本人であること」をデジタル上で永続的に証明する改ざん不能な記録方式。</p>
                     </div>
@@ -439,9 +498,12 @@
     </div>
 
     <script>
-        // --- WebGL Neural Network Scene ---
+        // --- WebGL Neural Network Scene & Interactions ---
         let scene, camera, renderer, group, points, lines;
-        const particleCount = 200;
+        const particleCount = 250;
+        let particlesData = [];
+        let mouseX = 0, mouseY = 0;
+        const cursorEffect = document.getElementById('cursor-effect');
 
         function initWebGL() {
             scene = new THREE.Scene();
@@ -456,55 +518,138 @@
             group = new THREE.Group();
             scene.add(group);
 
-            const pos = new Float32Array(particleCount * 3);
-            for(let i=0; i<particleCount*3; i++) pos[i] = (Math.random() - 0.5) * 1000;
+            const positions = new Float32Array(particleCount * 3);
+            for (let i = 0; i < particleCount; i++) {
+                const x = (Math.random() - 0.5) * 1000;
+                const y = (Math.random() - 0.5) * 1000;
+                const z = (Math.random() - 0.5) * 1000;
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+                
+                particlesData.push({
+                    velocity: new THREE.Vector3(-1 + Math.random() * 2, -1 + Math.random() * 2, -1 + Math.random() * 2),
+                    numConnections: 0
+                });
+            }
+
             const geo = new THREE.BufferGeometry();
-            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            const mat = new THREE.PointsMaterial({ color: 0x00aaff, size: 2.5, transparent: true, opacity: 0.8 });
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({ 
+                color: 0x00aaff, 
+                size: 3, 
+                transparent: true, 
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending 
+            });
             points = new THREE.Points(geo, mat);
             group.add(points);
 
             const lGeo = new THREE.BufferGeometry();
-            const lMat = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.15 });
+            const lMat = new THREE.LineBasicMaterial({ 
+                color: 0x00aaff, 
+                transparent: true, 
+                opacity: 0.2,
+                blending: THREE.AdditiveBlending
+            });
             lines = new THREE.LineSegments(lGeo, lMat);
             group.add(lines);
 
-            let mX = 0, mY = 0;
+            // Interaction: Follow Mouse and Click Burst
             window.addEventListener('mousemove', (e) => {
-                mX = (e.clientX - window.innerWidth / 2) * 0.1;
-                mY = (e.clientY - window.innerHeight / 2) * 0.1;
+                mouseX = (e.clientX - window.innerWidth / 2);
+                mouseY = (e.clientY - window.innerHeight / 2);
+                
+                // UI Cursor Effect
+                cursorEffect.style.opacity = 1;
+                cursorEffect.style.left = e.clientX + 'px';
+                cursorEffect.style.top = e.clientY + 'px';
+            });
+
+            window.addEventListener('mousedown', (e) => {
+                // Click burst effect in WebGL
+                const vector = new THREE.Vector3(
+                    (e.clientX / window.innerWidth) * 2 - 1,
+                    -(e.clientY / window.innerHeight) * 2 + 1,
+                    0.5
+                );
+                vector.unproject(camera);
+                const dir = vector.sub(camera.position).normalize();
+                const distance = -camera.position.z / dir.z;
+                const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+
+                particlesData.forEach((pd, i) => {
+                    const pPos = new THREE.Vector3(
+                        positions[i * 3],
+                        positions[i * 3 + 1],
+                        positions[i * 3 + 2]
+                    );
+                    const dist = pPos.distanceTo(pos);
+                    if (dist < 200) {
+                        const push = pPos.sub(pos).normalize().multiplyScalar(15);
+                        pd.velocity.add(push);
+                    }
+                });
+
+                // UI Feedback
+                cursorEffect.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                setTimeout(() => cursorEffect.style.transform = 'translate(-50%, -50%) scale(1)', 150);
             });
 
             const animate = () => {
                 requestAnimationFrame(animate);
-                group.rotation.y += 0.0006;
-                group.rotation.x += 0.0002;
-                camera.position.x += (mX - camera.position.x) * 0.05;
-                camera.position.y += (-mY - camera.position.y) * 0.05;
-                camera.lookAt(scene.position);
-
+                
                 const posArr = points.geometry.attributes.position.array;
                 const lPos = [];
-                for(let i=0; i<particleCount; i++) {
-                    for(let j=i+1; j<particleCount; j++) {
-                        const d = Math.sqrt(
-                            Math.pow(posArr[i*3] - posArr[j*3], 2) +
-                            Math.pow(posArr[i*3+1] - posArr[j*3+1], 2) +
-                            Math.pow(posArr[i*3+2] - posArr[j*3+2], 2)
-                        );
-                        if(d < 120) {
-                            lPos.push(posArr[i*3], posArr[i*3+1], posArr[i*3+2]);
-                            lPos.push(posArr[j*3], posArr[j*3+1], posArr[j*3+2]);
+                let vertexIndex = 0;
+
+                for (let i = 0; i < particleCount; i++) {
+                    const pd = particlesData[i];
+                    
+                    // Basic motion
+                    posArr[i * 3] += pd.velocity.x;
+                    posArr[i * 3 + 1] += pd.velocity.y;
+                    posArr[i * 3 + 2] += pd.velocity.z;
+
+                    // Mouse attraction
+                    const pPos = new THREE.Vector3(posArr[i*3], posArr[i*3+1], posArr[i*3+2]);
+                    const mPos = new THREE.Vector3(mouseX, -mouseY, 0);
+                    if (pPos.distanceTo(mPos) < 300) {
+                        pd.velocity.add(mPos.sub(pPos).normalize().multiplyScalar(0.05));
+                    }
+
+                    // Bounds check
+                    if (posArr[i * 3] < -500 || posArr[i * 3] > 500) pd.velocity.x *= -1;
+                    if (posArr[i * 3 + 1] < -500 || posArr[i * 3 + 1] > 500) pd.velocity.y *= -1;
+                    if (posArr[i * 3 + 2] < -500 || posArr[i * 3 + 2] > 500) pd.velocity.z *= -1;
+
+                    // Friction
+                    pd.velocity.multiplyScalar(0.98);
+
+                    // Connection logic
+                    for (let j = i + 1; j < particleCount; j++) {
+                        const dx = posArr[i * 3] - posArr[j * 3];
+                        const dy = posArr[i * 3 + 1] - posArr[j * 3 + 1];
+                        const dz = posArr[i * 3 + 2] - posArr[j * 3 + 2];
+                        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        
+                        if (d < 130) {
+                            lPos.push(posArr[i * 3], posArr[i * 3 + 1], posArr[i * 3 + 2]);
+                            lPos.push(posArr[j * 3], posArr[j * 3 + 1], posArr[j * 3 + 2]);
                         }
                     }
                 }
+
+                points.geometry.attributes.position.needsUpdate = true;
                 lines.geometry.setAttribute('position', new THREE.Float32BufferAttribute(lPos, 3));
+                
+                group.rotation.y += 0.001;
                 renderer.render(scene, camera);
             };
             animate();
         }
 
-        // --- History / Chronicle Logic ---
+        // --- History Logic ---
         const historyData = [
             { year: "2029", title: "Project: Genesis Mapping", desc: "世界初、非侵襲的量子スキャンにより生体脳の完全なシナプス結合パターンをデータ化することに成功。" },
             { year: "2034", title: "Neural Sync Alpha", desc: "抽出された意識データと生体脳のリアルタイム同期を確立。被験者は二つの視点を同時に体験することとなった。" },
@@ -535,14 +680,12 @@
                 wrapper.style.left = `${x - 150}px`;
                 wrapper.style.top = `0`;
                 wrapper.style.height = `100%`;
-                
                 const isEven = i % 2 === 0;
-                
                 wrapper.innerHTML = `
                     <div class="node-vertical-line ${isEven ? 'up' : 'down'}"></div>
                     <div class="flex flex-col items-center justify-center h-full">
                         <div class="history-node" onclick="snapTo(${i})"></div>
-                        <div class="absolute font-orbitron text-blue-500 font-bold tracking-[0.2em] ${isEven ? '-top-10' : '-bottom-10'}">
+                        <div class="absolute font-orbitron text-blue-500 font-bold tracking-[0.2em] ${isEven ? '-top-10' : '-bottom-10'} transition-all hover:text-white">
                             ${data.year}
                         </div>
                     </div>
@@ -555,12 +698,9 @@
             const centerOffset = window.innerWidth / 2;
             const targetPos = (index + 1) * nodeSpacing + (centerOffset - nodeSpacing);
             scrollX = -(targetPos - centerOffset);
-            
-            // Limit scroll
             const maxScroll = 0;
             const minScroll = -(track.offsetWidth - window.innerWidth);
             scrollX = Math.max(minScroll, Math.min(maxScroll, scrollX));
-
             track.style.transition = 'transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
             mainLine.style.transition = 'transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
             track.style.transform = `translateX(${scrollX}px)`;
@@ -589,18 +729,17 @@
                 const d = historyData[activeIndex];
                 const detail = document.getElementById('history-detail');
                 detail.style.opacity = 0;
-                detail.style.transform = 'translateY(10px)';
+                detail.style.transform = 'translateY(15px) skewX(2deg)';
                 setTimeout(() => {
                     document.getElementById('hist-year').innerText = d.year;
                     document.getElementById('hist-title').innerText = d.title;
                     document.getElementById('hist-desc').innerText = d.desc;
                     detail.style.opacity = 1;
-                    detail.style.transform = 'translateY(0)';
+                    detail.style.transform = 'translateY(0) skewX(0deg)';
                 }, 300);
             }
         }
 
-        // --- Viewport Events ---
         const hViewport = document.getElementById('history-viewport');
         hViewport.addEventListener('mousedown', (e) => { 
             isDragging = true; 
@@ -616,11 +755,9 @@
         window.addEventListener('mousemove', (e) => { 
             if(!isDragging) return; 
             scrollX = e.pageX - startX; 
-            
             const maxScroll = 100;
             const minScroll = -(track.offsetWidth - window.innerWidth + 100);
             scrollX = Math.max(minScroll, Math.min(maxScroll, scrollX));
-
             track.style.transform = `translateX(${scrollX}px)`; 
             mainLine.style.transform = `translateX(${scrollX}px) translateY(-50%)`;
             updateHistory();
@@ -628,17 +765,14 @@
         hViewport.addEventListener('wheel', (e) => {
             e.preventDefault();
             scrollX -= e.deltaY * 2.0;
-            
             const maxScroll = 100;
             const minScroll = -(track.offsetWidth - window.innerWidth + 100);
             scrollX = Math.max(minScroll, Math.min(maxScroll, scrollX));
-
             track.style.transition = 'none';
             mainLine.style.transition = 'none';
             track.style.transform = `translateX(${scrollX}px)`;
             mainLine.style.transform = `translateX(${scrollX}px) translateY(-50%)`;
             updateHistory();
-            
             clearTimeout(window.snapTimeout);
             window.snapTimeout = setTimeout(() => snapTo(activeIndex), 150);
         }, { passive: false });
@@ -647,13 +781,11 @@
         function switchTab(name) {
             const currentTab = document.querySelector('.tab-content.active');
             if(currentTab && currentTab.id === 'tab-'+name) return;
-
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.getElementById('nav-'+name).classList.add('active');
-
             if(currentTab) {
                 currentTab.style.opacity = 0;
-                currentTab.style.transform = 'translateY(-10px)';
+                currentTab.style.transform = 'translateY(-15px) scale(0.98)';
                 setTimeout(() => {
                     currentTab.classList.remove('active');
                     showNewTab(name);
@@ -668,7 +800,7 @@
             newTab.classList.add('active');
             setTimeout(() => {
                 newTab.style.opacity = 1;
-                newTab.style.transform = 'translateY(0)';
+                newTab.style.transform = 'translateY(0) scale(1)';
                 if(name === 'history') {
                     setupHistory();
                     snapTo(0);
@@ -687,7 +819,6 @@
         }
         document.getElementById('main-viewport').addEventListener('scroll', handleReveal);
 
-        // --- Init ---
         window.onload = () => {
             let p = 0;
             const int = setInterval(() => {
