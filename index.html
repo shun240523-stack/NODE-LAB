@@ -4,50 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ノードラボ株式会社 | NODE LAB Inc.</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100;300;500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --neon-blue: #00aaff;
-            --neon-glow: rgba(0, 170, 255, 0.6);
-            --bg-dark: #020205;
+            --neon-glow: rgba(0, 170, 255, 0.4);
+            --bg-dark: #000000;
+            --ecd-cyan: #00e5ff;
+            --accent-pink: #ff007a;
         }
+        
         body {
             margin: 0;
-            overflow: hidden;
             background-color: var(--bg-dark);
             color: #ffffff;
             font-family: 'Noto Sans JP', sans-serif;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+            line-height: 2.0; /* テキスト主体のため行間を広めに設定 */
         }
+
         .font-orbitron { font-family: 'Orbitron', sans-serif; }
-        
-        canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: -1;
-            filter: contrast(1.1) brightness(1.1);
-        }
 
-        /* スキャンライン・ノイズ効果 */
-        body::before {
-            content: " ";
-            display: block;
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.02));
-            z-index: 1000;
-            background-size: 100% 4px, 3px 100%;
-            pointer-events: none;
-            opacity: 0.3;
-        }
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
 
-        /* ローディング画面 */
+        /* ローディングアニメーション */
         #loader {
             position: fixed;
             inset: 0;
@@ -56,562 +42,388 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 2000;
+            z-index: 9999;
             transition: opacity 1.2s cubic-bezier(0.7, 0, 0.3, 1);
         }
-        .loader-bar {
-            width: 300px;
+        .loader-bar-bg {
+            width: 200px;
             height: 1px;
-            background: rgba(255,255,255,0.03);
-            margin-top: 40px;
+            background: rgba(255,255,255,0.05);
+            margin-top: 30px;
             position: relative;
         }
-        .loader-progress {
+        .loader-bar-fill {
             position: absolute;
             height: 100%;
             width: 0%;
             background: var(--neon-blue);
-            box-shadow: 0 0 30px var(--neon-blue);
-            transition: width 0.4s ease-out;
+            box-shadow: 0 0 15px var(--neon-blue);
         }
 
         /* ナビゲーション */
-        .top-nav {
+        .glass-nav {
             position: fixed;
             top: 0;
-            left: 0;
             width: 100%;
-            height: 80px;
-            z-index: 1100;
+            height: 70px;
+            z-index: 1000;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 4rem;
-            background: rgba(2, 2, 5, 0.7);
+            padding: 0 5%;
+            background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
         }
 
-        .nav-item {
-            position: relative;
-            padding: 0.5rem 1rem;
-            font-size: 0.75rem;
-            font-weight: 500;
-            letter-spacing: 0.1em;
-            color: rgba(255, 255, 255, 0.5);
-            transition: all 0.3s ease;
+        .nav-link {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 0.3em;
+            color: rgba(255,255,255,0.4);
+            transition: 0.4s;
             cursor: pointer;
+            position: relative;
+            padding: 5px 0;
         }
-        .nav-item:hover, .nav-item.active {
+        .nav-link.active, .nav-link:hover {
             color: var(--neon-blue);
-            text-shadow: 0 0 15px var(--neon-glow);
         }
-        .nav-item::after {
+        .nav-link.active::after {
             content: '';
             position: absolute;
             bottom: -5px;
-            left: 50%;
-            width: 0%;
-            height: 2px;
+            left: 0;
+            width: 100%;
+            height: 1px;
             background: var(--neon-blue);
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            transform: translateX(-50%);
-        }
-        .nav-item.active::after {
-            width: 80%;
         }
 
-        /* タブ切り替え */
-        .tab-content {
+        /* セクション共通 */
+        .tab-section {
             display: none;
-            height: 100vh;
-            width: 100%;
             opacity: 0;
             transform: translateY(20px);
-            transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 1, 0.2, 1);
-            padding-top: 80px;
-            overflow-y: auto;
-            scroll-behavior: smooth;
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            padding-top: 140px;
+            padding-bottom: 120px;
         }
-        .tab-content.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* スクロール式タイムライン */
-        .history-section {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 100px 20px 200px;
-            position: relative;
-        }
-        .history-line {
-            position: absolute;
-            left: 50%;
-            top: 0;
-            bottom: 0;
-            width: 1px;
-            background: linear-gradient(to bottom, transparent, var(--neon-blue), transparent);
-            transform: translateX(-50%);
-            opacity: 0.3;
-        }
-        .history-item {
-            position: relative;
-            width: 100%;
-            margin-bottom: 120px;
-            display: flex;
-            justify-content: flex-end;
-        }
-        .history-item:nth-child(even) { justify-content: flex-start; }
-        .history-card {
-            width: 42%;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            opacity: 0.2;
-            transform: translateY(30px);
-        }
-        .history-card.visible {
-            opacity: 1;
-            transform: translateY(0);
-            border-color: rgba(0, 170, 255, 0.3);
-        }
-        .history-dot {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            width: 12px;
-            height: 12px;
-            background: var(--bg-dark);
-            border: 2px solid var(--neon-blue);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-        }
-
-        /* 汎用アニメーション */
-        .reveal {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.8s ease-out;
-        }
-        .reveal.visible {
+        .tab-section.active {
+            display: block;
             opacity: 1;
             transform: translateY(0);
         }
 
-        /* ボタン */
-        .btn-action {
-            padding: 0.8rem 2.2rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-            background: transparent;
-            color: white;
-            cursor: pointer;
-        }
-        .btn-action:hover {
-            border-color: var(--neon-blue);
-            background: rgba(0, 170, 255, 0.05);
-            box-shadow: 0 0 20px var(--neon-glow);
+        /* 装飾を最小限に */
+        .bg-grid {
+            background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
         }
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        /* コンテンツ要素 */
+        .card-minimal {
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding-left: 30px;
+            padding-top: 10px;
+            padding-bottom: 10px;
+            transition: 0.5s;
+        }
+        .card-minimal:hover {
+            border-left-color: var(--neon-blue);
+            background: rgba(255, 255, 255, 0.01);
         }
 
-        .news-item {
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding: 1.2rem 0;
-            display: flex;
-            align-items: center;
+        .reveal-text {
+            opacity: 0;
+            transform: translateY(15px);
+            transition: 0.8s ease-out;
         }
-        .news-date {
-            font-family: 'Orbitron', sans-serif;
-            color: var(--neon-blue);
-            font-size: 0.7rem;
-            width: 110px;
+        .reveal-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .text-justified {
+            text-align: justify;
+            text-justify: inter-character;
         }
 
         @media (max-width: 768px) {
-            .history-line { left: 30px; }
-            .history-item, .history-item:nth-child(even) { justify-content: flex-start; padding-left: 60px; }
-            .history-card { width: 90%; }
-            .history-dot { left: 30px; }
-            .top-nav { padding: 0 1rem; }
+            .glass-nav { padding: 0 1.5rem; }
+            .nav-link { font-size: 0.5rem; letter-spacing: 0.15em; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ローディングアニメーション -->
     <div id="loader">
-        <div class="font-orbitron text-3xl font-bold tracking-[0.6em] mb-4">NODE <span class="text-blue-500">LAB</span></div>
-        <div class="loader-bar">
-            <div class="loader-progress" id="progress-bar"></div>
-        </div>
-        <div class="mt-8 text-[10px] text-blue-400 font-mono tracking-[0.4em] uppercase" id="loader-perc">システム起動中: 0%</div>
+        <div class="font-orbitron text-2xl font-black tracking-[0.8em]">NODE <span class="text-blue-500">LAB</span></div>
+        <div class="loader-bar-bg"><div class="loader-bar-fill" id="progress"></div></div>
     </div>
 
-    <!-- ヘッダーナビゲーション -->
-    <header class="top-nav">
-        <div class="font-orbitron text-xl font-bold tracking-tighter cursor-pointer" onclick="switchTab('home')">
+    <nav class="glass-nav">
+        <div class="font-orbitron text-lg font-black tracking-widest cursor-pointer" onclick="showTab('home')">
             NODE <span class="text-blue-500">LAB</span>
         </div>
-        <nav class="flex space-x-1 lg:space-x-4">
-            <div onclick="switchTab('home')" class="nav-item active" id="nav-home">ホーム</div>
-            <div onclick="switchTab('vision')" class="nav-item" id="nav-vision">理念</div>
-            <div onclick="switchTab('history')" class="nav-item" id="nav-history">歴史</div>
-            <div onclick="switchTab('tech')" class="nav-item" id="nav-tech">技術・製品</div>
-            <div onclick="switchTab('culture')" class="nav-item" id="nav-culture">文化・採用</div>
-        </nav>
-    </header>
-
-    <div id="main-viewport">
-        <!-- タブ: ホーム -->
-        <div id="tab-home" class="tab-content active overflow-x-hidden">
-            <!-- ヒーローセクション -->
-            <section class="min-h-screen flex flex-col justify-center items-center text-center px-6">
-                <div class="mb-4 reveal">
-                    <span class="px-3 py-1 border border-blue-500 text-blue-500 text-[10px] font-orbitron tracking-widest uppercase">Version 4.0.2 稼働中</span>
-                </div>
-                <h1 class="text-5xl md:text-8xl font-black mb-8 font-orbitron leading-[1.1] reveal">
-                    肉体を超え、<br><span class="text-blue-500">意識の先へ。</span>
-                </h1>
-                <p class="text-gray-400 text-lg max-w-2xl mx-auto font-light leading-relaxed mb-12 reveal">
-                    ノードラボは、脳神経情報のデジタルアーカイブ化と、意識の永続的な保持を実現するディープテック・カンパニーです。
-                </p>
-                <div class="reveal flex flex-col md:flex-row gap-4">
-                    <button onclick="switchTab('tech')" class="btn-action !bg-blue-600 !border-blue-600">事業内容を見る</button>
-                    <button onclick="switchTab('vision')" class="btn-action">私たちのビジョン</button>
-                </div>
-            </section>
-
-            <!-- 企業紹介セクション -->
-            <section class="max-w-6xl mx-auto px-6 py-32 bg-gradient-to-b from-transparent via-blue-900/5 to-transparent">
-                <div class="text-center mb-20 reveal">
-                    <h2 class="text-3xl font-bold mb-4">ノードラボとは？</h2>
-                    <p class="text-gray-400">私たちは「死」という概念を、テクノロジーで再定義します。</p>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-                    <div class="text-center reveal">
-                        <div class="w-16 h-16 bg-blue-500/10 border border-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <span class="font-orbitron text-blue-500 text-xl">01</span>
-                        </div>
-                        <h3 class="text-xl font-bold mb-4">意識のスキャン</h3>
-                        <p class="text-sm text-gray-400 leading-relaxed">
-                            最新のニューラル・マッピング技術により、個人の記憶、思考パターン、性格を100%の精度でデータ化します。
-                        </p>
-                    </div>
-                    <div class="text-center reveal">
-                        <div class="w-16 h-16 bg-blue-500/10 border border-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <span class="font-orbitron text-blue-500 text-xl">02</span>
-                        </div>
-                        <h3 class="text-xl font-bold mb-4">クラウド保持</h3>
-                        <p class="text-sm text-gray-400 leading-relaxed">
-                            データ化された「意識」は、セキュリティの万全な量子サーバー群に保存され、物理的な肉体の死後も存続し続けます。
-                        </p>
-                    </div>
-                    <div class="text-center reveal">
-                        <div class="w-16 h-16 bg-blue-500/10 border border-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <span class="font-orbitron text-blue-500 text-xl">03</span>
-                        </div>
-                        <h3 class="text-xl font-bold mb-4">社会への復帰</h3>
-                        <p class="text-sm text-gray-400 leading-relaxed">
-                            保存された意識は、メタバース空間や生体アンドロイド（シェル）を通じて、再び現実社会と関わることが可能です。
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ニュースログ -->
-            <section class="max-w-4xl mx-auto px-6 py-24">
-                <div class="flex items-center mb-12 reveal">
-                    <h2 class="font-orbitron text-2xl font-bold tracking-tighter mr-4">最新ログ</h2>
-                    <div class="flex-grow h-[1px] bg-blue-500 opacity-30"></div>
-                </div>
-                <div class="space-y-2 reveal">
-                    <div class="news-item">
-                        <span class="news-date">2026.03.20</span>
-                        <span class="text-sm text-gray-300">第4世代ニューラルマッピング・エンジンの公開テストを開始。</span>
-                    </div>
-                    <div class="news-item">
-                        <span class="news-date">2026.02.15</span>
-                        <span class="text-sm text-gray-300">「意識の法的権利に関する国際コンソーシアム」へ加盟。</span>
-                    </div>
-                    <div class="news-item">
-                        <span class="news-date">2026.01.05</span>
-                        <span class="text-sm text-gray-300">次世代意識保存インフラのロードマップを公開。</span>
-                    </div>
-                </div>
-            </section>
+        <div class="flex space-x-6 md:space-x-12">
+            <span class="nav-link active" id="btn-home" onclick="showTab('home')">HOME</span>
+            <span class="nav-link" id="btn-vision" onclick="showTab('vision')">VISION</span>
+            <span class="nav-link" id="btn-history" onclick="showTab('history')">HISTORY</span>
+            <span class="nav-link" id="btn-tech" onclick="showTab('tech')">TECH</span>
+            <span class="nav-link" id="btn-culture" onclick="showTab('culture')">CULTURE</span>
         </div>
+    </nav>
 
-        <!-- タブ: 理念 -->
-        <div id="tab-vision" class="tab-content items-center py-20">
-            <div class="container mx-auto px-6 max-w-4xl">
-                <h2 class="font-orbitron text-4xl font-black mb-12 tracking-widest text-center reveal">ミッションとビジョン</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-                    <div class="glass-panel p-10 rounded-lg reveal">
-                        <h3 class="text-blue-500 font-bold mb-4 font-orbitron">01. 解放</h3>
-                        <p class="text-gray-300 leading-relaxed text-sm">
-                            肉体という脆弱な容器からの脱却。老化、病、そして「死」という生物学的制約をテクノロジーで無効化します。
-                        </p>
+    <div class="bg-grid"></div>
+
+    <!-- HOME TAB -->
+    <section id="home" class="tab-section active">
+        <div class="container mx-auto px-8 md:px-16">
+            <div class="max-w-4xl mx-auto">
+                <!-- Hero -->
+                <div class="mb-40">
+                    <div class="mb-10 reveal-text">
+                        <span class="text-blue-400 text-[10px] font-orbitron tracking-[0.4em] uppercase">Executive Report: Neural Migration</span>
                     </div>
-                    <div class="glass-panel p-10 rounded-lg reveal">
-                        <h3 class="text-blue-500 font-bold mb-4 font-orbitron">02. 継続</h3>
-                        <p class="text-gray-300 leading-relaxed text-sm">
-                            知性の永続性。個人の記憶と個性を資産として保存し、何世代にもわたって価値を継承できる社会を実現します。
+                    <h1 class="text-4xl md:text-7xl font-black font-orbitron leading-tight mb-16 tracking-tighter reveal-text">
+                        ARCHIVING <br>HUMAN <br><span class="text-blue-500">ESSENCE.</span>
+                    </h1>
+                    <div class="max-w-2xl reveal-text">
+                        <p class="text-gray-300 text-lg font-light leading-relaxed text-justified mb-8">
+                            私たちは「生命」を定義し直しています。ノードラボ株式会社は、ECD財団から供給される高純度の特異エネルギーを基盤とし、人類の意識、記憶、そして個性をデジタル領域へとシームレスに転送する技術を確立しました。
+                        </p>
+                        <p class="text-gray-500 text-sm leading-loose text-justified">
+                            情報が物理的制約から解放されるとき、人類はかつてない自由を手に入れます。それは単なるデータの保存ではなく、意識の永続的な運用を意味します。
                         </p>
                     </div>
                 </div>
-                <div class="glass-panel p-10 rounded-lg border-l-4 border-blue-500 reveal">
-                    <p class="text-xl text-gray-300 leading-relaxed italic">
-                        「肉体はただの容器に過ぎない。本質はノード（結節点）にある」
+
+                <!-- Abstract Sections (Replacing images with deep text) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-20 mb-40">
+                    <div class="reveal-text">
+                        <div class="font-orbitron text-[10px] text-blue-500 mb-6 tracking-widest">SUB-SECTION A</div>
+                        <h3 class="text-xl font-bold mb-6">高次元演算コグニティブ・コア</h3>
+                        <p class="text-gray-500 text-sm leading-relaxed text-justified">
+                            ネオ東京に位置する第1演算センターでは、毎秒京単位のシナプス結合を模倣する「特異エネルギー駆動型ニューラルネットワーク」が稼働しています。この施設は、個人の意識をリアルタイムで同期し、物理的脳が活動を停止した後も、デジタル空間におけるアイデンティティを完璧に保証します。
+                        </p>
+                    </div>
+                    <div class="reveal-text">
+                        <div class="font-orbitron text-[10px] text-blue-500 mb-6 tracking-widest">SUB-SECTION B</div>
+                        <h3 class="text-xl font-bold mb-6">量子符号化による魂の抽出</h3>
+                        <p class="text-gray-500 text-sm leading-relaxed text-justified">
+                            私たちのマッピング技術は、従来のMRIや脳波測定とは一線を画します。ECDエネルギーによって誘起される量子もつれを利用し、個人の深層心理や直感的な反応、言語化不可能な「クオリア」さえも正確にデジタル記述子へと変換します。これは人類の感性の完全保存を目的としています。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ECD Partnership (Text Emphasis) -->
+                <div class="py-32 border-t border-white/5">
+                    <div class="max-w-3xl reveal-text">
+                        <h2 class="text-3xl font-bold mb-10 leading-snug">
+                            <span class="text-cyan-400 font-orbitron">ECD Foundation</span> との戦略的連環
+                        </h2>
+                        <p class="text-gray-400 text-base leading-relaxed text-justified mb-10">
+                            ECD財団が提供する「特異エネルギー」は、我々のプロジェクトに欠かせない唯一の動力源です。彼らが物理学の極限状態で発見したこのエネルギーは、情報の劣化を最小限に抑えつつ、無限の並列演算を可能にします。この提携は、単なるビジネス関係を超えた、人類の進化に対する共同宣誓です。
+                        </p>
+                        <div class="flex items-center gap-10">
+                            <div class="h-[1px] flex-1 bg-gradient-to-r from-cyan-400/50 to-transparent"></div>
+                            <span class="font-orbitron text-[10px] tracking-widest text-cyan-400">AUTHORIZED INFRASTRUCTURE</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- VISION TAB -->
+    <section id="vision" class="tab-section">
+        <div class="container mx-auto px-8 max-w-4xl">
+            <div class="mb-24 reveal-text">
+                <h2 class="font-orbitron text-4xl font-black mb-10 tracking-[0.2em]">VISION</h2>
+                <p class="text-xl text-blue-400 font-light italic">「生命の第二段階への移行」</p>
+            </div>
+            <div class="space-y-32">
+                <div class="reveal-text">
+                    <h3 class="text-2xl font-bold mb-8">肉体という制約からの脱却</h3>
+                    <p class="text-gray-400 text-lg leading-relaxed text-justified">
+                        人類の歴史は、常に肉体の脆弱性との戦いでした。老化、疾病、そして死。これらはすべて、ハードウェアである肉体の限界に起因します。ノードラボのビジョンは、意識というソフトウェアを肉体から切り離し、クラウド上に構築された「永遠のアーキテクチャ」へと移行させることにあります。私たちは死を、単なるOSのアップグレードへと再定義します。
                     </p>
-                    <p class="text-right text-sm text-blue-400 mt-4">— ノードラボ R&D憲章</p>
+                </div>
+                <div class="reveal-text">
+                    <h3 class="text-2xl font-bold mb-8">普遍的知性の集積体</h3>
+                    <p class="text-gray-400 text-lg leading-relaxed text-justified">
+                        個々の意識がデジタル化され、ネットワークで相互接続されるとき、人類は個を保ちながらも一つの巨大な知性体としての側面を持ち始めます。これは個性の喪失ではなく、他者との究極の理解と、過去の叡智との直接的な結合を意味します。ECD財団のクリーンエネルギーが地球環境を救うように、私たちの技術は人類の精神的枯渇を救います。
+                    </p>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- タブ: 沿革 (スクロール式) -->
-        <div id="tab-history" class="tab-content !p-0">
-            <div class="pt-32 pb-10 text-center">
-                <h2 class="font-orbitron text-4xl font-black mb-2 tracking-[0.5em] text-blue-500 reveal">クロニクル</h2>
-                <p class="text-[10px] text-gray-500 tracking-[0.3em] uppercase reveal">神経科学における歴史的転換点</p>
+    <!-- HISTORY TAB -->
+    <section id="history" class="tab-section">
+        <div class="container mx-auto px-8 max-w-4xl">
+            <div class="mb-24 reveal-text">
+                <h2 class="font-orbitron text-4xl font-black mb-10 tracking-[0.2em]">HISTORY</h2>
             </div>
-
-            <div class="history-section">
-                <div class="history-line"></div>
-                
-                <div class="history-item">
-                    <div class="history-card">
-                        <div class="font-orbitron text-blue-500 text-3xl font-black mb-1">2029</div>
-                        <h3 class="text-xs font-bold text-white mb-2 uppercase tracking-widest">創世記のマッピング</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">初の被験者における脳神経パターンの完全複製に成功。デジタル意識の第一歩。</p>
-                    </div>
-                    <div class="history-dot"></div>
+            <div class="space-y-20 border-l border-white/5 pl-10">
+                <div class="reveal-text">
+                    <div class="font-orbitron text-blue-500 text-xl font-bold mb-4">2032 : INCEPTION</div>
+                    <p class="text-gray-400 leading-relaxed text-justified">
+                        東京都渋谷区の地下深度150mに位置するセクター7Gにて、実験的な神経科学ユニットとして設立。最初の理論体系「意識の流動性に関する第一定義」を起草。
+                    </p>
                 </div>
-
-                <div class="history-item">
-                    <div class="history-card">
-                        <div class="font-orbitron text-blue-500 text-3xl font-black mb-1">2034</div>
-                        <h3 class="text-xs font-bold text-white mb-2 uppercase tracking-widest">ニューロ・シンク・ハブ</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">クラウドベースの同期プラットフォームを開設。他者との意識共有実験を開始。</p>
-                    </div>
-                    <div class="history-dot"></div>
+                <div class="reveal-text">
+                    <div class="font-orbitron text-cyan-400 text-xl font-bold mb-4">2038 : ENERGY SYNERGY</div>
+                    <p class="text-gray-400 leading-relaxed text-justified">
+                        ECD財団による「特異エネルギー」の商用利用第一号として選定。これにより、従来100年を要すると言われた脳マッピングの計算時間を数分に短縮することに成功。
+                    </p>
                 </div>
-
-                <div class="history-item">
-                    <div class="history-card">
-                        <div class="font-orbitron text-blue-500 text-3xl font-black mb-1">2041</div>
-                        <h3 class="text-xs font-bold text-white mb-2 uppercase tracking-widest">ソウル・プロトコル</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">法的地位の確立に伴い、デジタル人格の権利を保護するプロトコルを実装。</p>
-                    </div>
-                    <div class="history-dot"></div>
-                </div>
-
-                <div class="history-item">
-                    <div class="history-card">
-                        <div class="font-orbitron text-blue-500 text-3xl font-black mb-1">2048</div>
-                        <h3 class="text-xs font-bold text-white mb-2 uppercase tracking-widest">インフィニット・ネットワーク</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">ハードウェアに依存しない、量子分散型意識保持ネットワークが完全稼働。</p>
-                    </div>
-                    <div class="history-dot"></div>
-                </div>
-
-                <div class="history-item">
-                    <div class="history-card">
-                        <div class="font-orbitron text-blue-500 text-3xl font-black mb-1">2055</div>
-                        <h3 class="text-xs font-bold text-white mb-2 uppercase tracking-widest">シンギュラリティの達成</h3>
-                        <p class="text-xs text-gray-400 leading-relaxed">身体喪失後の意識再起動成功率が100%に到達。永続的な生存が一般サービス化。</p>
-                    </div>
-                    <div class="history-dot"></div>
+                <div class="reveal-text">
+                    <div class="font-orbitron text-white text-xl font-bold mb-4">2044 : THE MIGRATION</div>
+                    <p class="text-gray-400 leading-relaxed text-justified">
+                        人類史上初となる「完全意識移行試験」を完遂。被験者Aの意識はデジタル空間内で、物理世界と同様、あるいはそれ以上の解像度で活動を継続している。
+                    </p>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- タブ: 技術・製品 -->
-        <div id="tab-tech" class="tab-content py-20 items-center">
-            <div class="container mx-auto px-6 max-w-6xl">
-                <h2 class="font-orbitron text-4xl font-black mb-16 tracking-widest text-center reveal">中核技術とソリューション</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <div class="glass-panel p-8 reveal border-t-2 border-blue-500">
-                        <span class="text-[10px] font-orbitron text-blue-400 tracking-widest uppercase mb-4 block">製品 A-01</span>
-                        <h3 class="text-xl font-bold mb-4">NEURAL CLOUD (意識雲)</h3>
-                        <p class="text-sm text-gray-400 mb-6">個人の意識を暗号化し、分散型台帳技術を用いてクラウドにアップロードする基盤システム。</p>
-                        <ul class="text-[10px] text-blue-300 space-y-1 font-mono uppercase">
-                            <li>- 10.4 Exa-Synapse 容量</li>
-                            <li>- 無損失インテグリティ・チェック</li>
-                            <li>- 256-Bit 生体暗号化</li>
-                        </ul>
-                    </div>
-
-                    <div class="glass-panel p-8 reveal border-t-2 border-blue-500">
-                        <span class="text-[10px] font-orbitron text-blue-400 tracking-widest uppercase mb-4 block">製品 B-04</span>
-                        <h3 class="text-xl font-bold mb-4">GHOST SHELL (義体)</h3>
-                        <p class="text-sm text-gray-400 mb-6">デジタル意識を一時的に物理世界へ出力するための、高精度な生体模倣アンドロイド・インターフェース。</p>
-                        <ul class="text-[10px] text-blue-300 space-y-1 font-mono uppercase">
-                            <li>- 触覚フィードバック 2.0</li>
-                            <li>- 液体金属骨格システム</li>
-                            <li>- 48時間連続駆動バッテリー</li>
-                        </ul>
-                    </div>
-
-                    <div class="glass-panel p-8 reveal border-t-2 border-blue-500">
-                        <span class="text-[10px] font-orbitron text-blue-400 tracking-widest uppercase mb-4 block">研究 R-09</span>
-                        <h3 class="text-xl font-bold mb-4">PULSE LINK (共鳴)</h3>
-                        <p class="text-sm text-gray-400 mb-6">複数の意識をネットワーク上でリンクさせ、数千倍の速度で高度な並列思考を行う共同知的ハブ。</p>
-                        <ul class="text-[10px] text-blue-300 space-y-1 font-mono uppercase">
-                            <li>- マルチノード同期技術</li>
-                            <li>- 集合知演算ハブ</li>
-                            <li>- 超高速対話プロトコル</li>
-                        </ul>
-                    </div>
+    <!-- TECH TAB -->
+    <section id="tech" class="tab-section">
+        <div class="container mx-auto px-8 max-w-5xl">
+            <div class="mb-24 reveal-text text-center">
+                <h2 class="font-orbitron text-4xl font-black mb-6 tracking-[0.2em]">TECHNOLOGY</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="card-minimal reveal-text">
+                    <h4 class="text-lg font-bold mb-6 text-blue-400">シナプス解析デコーダー</h4>
+                    <p class="text-gray-500 text-sm leading-loose text-justified">
+                        脳内にある1000億のニューロンとそれらを結ぶ数兆のシナプスを、ECDパルスを用いて非侵襲的にスキャンします。感情の揺らぎや微細な記憶の断片までも、量子ビットの羅列として再構成する核心的技術です。
+                    </p>
+                </div>
+                <div class="card-minimal reveal-text">
+                    <h4 class="text-lg font-bold mb-6 text-cyan-400">特異点演算サーバー・メッシュ</h4>
+                    <p class="text-gray-500 text-sm leading-loose text-justified">
+                        意識を維持するための演算リソースは、世界中に分散配置されたメッシュ状のサーバー群によって提供されます。一つのノードが停止しても、意識の連続性はECDネットワーク全体で保護されます。
+                    </p>
+                </div>
+                <div class="card-minimal reveal-text">
+                    <h4 class="text-lg font-bold mb-6 text-pink-500">感覚再構築プロトコル</h4>
+                    <p class="text-gray-500 text-sm leading-loose text-justified">
+                        デジタル空間において「五感」をエミュレートするアルゴリズム。風の冷たさや光の眩しさといった物理的感覚を、デジタル信号を介して意識へと直接フィードバックします。
+                    </p>
+                </div>
+                <div class="card-minimal reveal-text">
+                    <h4 class="text-lg font-bold mb-6 text-white">エシカル・ガードレールAI</h4>
+                    <p class="text-gray-500 text-sm leading-loose text-justified">
+                        移行された意識が不正な書き換えや消去から守られるよう、自律型のセキュリティAIが24時間監視。デジタル存在としての「人権」をコードレベルで定義・保護します。
+                    </p>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- タブ: 文化・採用 -->
-        <div id="tab-culture" class="tab-content py-20 items-center">
-            <div class="container mx-auto px-6 max-w-4xl text-center">
-                <h2 class="font-orbitron text-4xl font-black mb-12 tracking-widest reveal">組織文化</h2>
-                <p class="text-gray-400 leading-relaxed text-lg mb-16 reveal">
-                    ノードラボには「物理的なオフィス」が存在しません。<br>
-                    全社員の意識がネットワーク上に存在し、プロジェクトに応じて同期・解散を繰り返す、液状の組織体です。
+    <!-- CULTURE TAB -->
+    <section id="culture" class="tab-section">
+        <div class="container mx-auto px-8 max-w-4xl">
+            <div class="mb-24 reveal-text">
+                <h2 class="font-orbitron text-4xl font-black mb-10 tracking-[0.2em]">CULTURE</h2>
+            </div>
+            <div class="reveal-text mb-20">
+                <h3 class="text-2xl font-bold mb-8">「存在」への問いを歓迎する組織</h3>
+                <p class="text-gray-400 text-lg leading-relaxed text-justified">
+                    ノードラボでは、社員の半数がすでに物理的肉体を離れた「デジタル・アーカイブ」です。会議室には生身の人間と、ディスプレイ越しに参加するデジタル意識が同等に存在します。私たちは「そこに誰がいるか」ではなく「どのような意志がそこにあるか」を重視します。
                 </p>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20 reveal">
-                    <div class="p-6 border border-white/10">
-                        <div class="text-blue-500 text-3xl font-orbitron mb-2">94%</div>
-                        <div class="text-[10px] uppercase tracking-widest text-gray-500">デジタル常駐率</div>
-                    </div>
-                    <div class="p-6 border border-white/10">
-                        <div class="text-blue-500 text-3xl font-orbitron mb-2">∞</div>
-                        <div class="text-[10px] uppercase tracking-widest text-gray-500">協働スペース</div>
-                    </div>
-                    <div class="p-6 border border-white/10">
-                        <div class="text-blue-500 text-3xl font-orbitron mb-2">24/7</div>
-                        <div class="text-[10px] uppercase tracking-widest text-gray-500">シナプス稼働率</div>
-                    </div>
-                </div>
-
-                <!-- フッター -->
-                <div class="mt-32 pt-10 border-t border-white/5 reveal">
-                    <div class="text-[10px] text-gray-600 font-orbitron tracking-[0.5em] pb-10">
-                        © 2026-2055 NODE LAB INC. ALL RIGHTS RESERVED.
-                    </div>
-                </div>
+            </div>
+            <div class="p-12 border border-white/5 bg-white/5 reveal-text">
+                <div class="font-orbitron text-xs text-blue-500 mb-6 tracking-widest">INTERNAL ETHICS</div>
+                <blockquote class="text-3xl font-light italic text-white leading-relaxed mb-8">
+                    "We do not build machines. We build the future vessels of human spirit."
+                </blockquote>
+                <p class="text-gray-500 text-sm">— Founding Principles, Article 1</p>
             </div>
         </div>
-    </div>
+    </section>
+
+    <footer class="py-20 border-t border-white/5 mt-20">
+        <div class="container mx-auto px-8 text-center">
+            <div class="font-orbitron text-xl font-black mb-8 tracking-[0.4em]">NODE <span class="text-blue-500">LAB</span></div>
+            <div class="text-[9px] text-gray-700 tracking-[0.4em] mb-4 uppercase">Advanced Consciousness Infrastructure / Tokyo Sector 7G</div>
+            <div class="text-[9px] text-gray-800 tracking-tighter">
+                &copy; 2045 NODE LAB INC. ALL RIGHTS RESERVED. POWERED BY ECD FOUNDATION ENERGY SOURCE.
+            </div>
+        </div>
+    </footer>
 
     <script>
-        // --- WebGL 背景アニメーション ---
-        let scene, camera, renderer, pts;
-        function initWebGL() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-            camera.position.z = 5;
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+        function showTab(id) {
+            const sections = document.querySelectorAll('.tab-section');
+            const navLinks = document.querySelectorAll('.nav-link');
 
-            const geo = new THREE.BufferGeometry();
-            const pos = [];
-            for(let i=0; i<400; i++) pos.push((Math.random()-0.5)*15, (Math.random()-0.5)*15, (Math.random()-0.5)*15);
-            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-            pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x00aaff, size: 0.02, transparent: true, opacity: 0.2 }));
-            scene.add(pts);
-
-            function anim() {
-                requestAnimationFrame(anim);
-                pts.rotation.y += 0.0003;
-                renderer.render(scene, camera);
-            }
-            anim();
-        }
-
-        // --- アニメーション監視 ---
-        const observerOptions = { threshold: 0.1 };
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
+            sections.forEach(s => {
+                s.style.opacity = '0';
+                s.style.transform = 'translateY(10px)';
+                setTimeout(() => s.classList.remove('active'), 200);
             });
-        }, observerOptions);
 
-        // --- タブ切り替えロジック ---
-        function switchTab(name) {
-            const tabs = document.querySelectorAll('.tab-content');
-            const navs = document.querySelectorAll('.nav-item');
-            
-            tabs.forEach(t => {
-                t.classList.remove('active');
-                t.style.display = 'none';
-                t.style.opacity = '0';
-            });
-            navs.forEach(n => n.classList.remove('active'));
+            navLinks.forEach(n => n.classList.remove('active'));
 
-            const target = document.getElementById('tab-' + name);
-            const nav = document.getElementById('nav-' + name);
-            
-            if (target) {
-                target.style.display = 'flex';
-                void target.offsetWidth;
+            setTimeout(() => {
+                const target = document.getElementById(id);
                 target.classList.add('active');
-                target.style.opacity = '1';
-                target.scrollTo(0, 0);
-                
-                const reveals = target.querySelectorAll('.reveal');
-                reveals.forEach((r, i) => {
-                    setTimeout(() => r.classList.add('visible'), i * 80);
-                    observer.observe(r);
-                });
+                document.getElementById('btn-' + id).classList.add('active');
 
-                if (name === 'history') {
-                    const cards = target.querySelectorAll('.history-card');
-                    cards.forEach(card => observer.observe(card));
-                }
-            }
-            if (nav) nav.classList.add('active');
+                setTimeout(() => {
+                    target.style.opacity = '1';
+                    target.style.transform = 'translateY(0)';
+                    
+                    const texts = target.querySelectorAll('.reveal-text');
+                    texts.forEach((t, i) => {
+                        setTimeout(() => t.classList.add('visible'), i * 80);
+                    });
+                }, 100);
+            }, 300);
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // --- 初期化 ---
-        window.onload = () => {
-            initWebGL();
-            let p = 0;
-            const loaderInt = setInterval(() => {
-                p += 5;
-                document.getElementById('progress-bar').style.width = p + '%';
-                document.getElementById('loader-perc').innerText = `システム起動中: ${p}%`;
-                if (p >= 100) {
-                    clearInterval(loaderInt);
-                    document.getElementById('loader').style.opacity = '0';
-                    setTimeout(() => {
-                        document.getElementById('loader').style.display = 'none';
-                        switchTab('home');
-                    }, 1000);
-                }
-            }, 30);
-        };
+        function handleReveal() {
+            const activeSection = document.querySelector('.tab-section.active');
+            if(!activeSection) return;
+            const reveals = activeSection.querySelectorAll('.reveal-text');
+            reveals.forEach(r => {
+                const rect = r.getBoundingClientRect();
+                if (rect.top < window.innerHeight - 50) r.classList.add('visible');
+            });
+        }
 
-        window.addEventListener('resize', () => {
-            if (renderer) renderer.setSize(window.innerWidth, window.innerHeight);
-            if (camera) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-            }
+        window.addEventListener('scroll', handleReveal);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let progress = 0;
+            const progressFill = document.getElementById('progress');
+            const loader = document.getElementById('loader');
+
+            const loading = setInterval(() => {
+                progress += Math.floor(Math.random() * 20) + 5;
+                if (progress > 100) progress = 100;
+                progressFill.style.width = progress + '%';
+
+                if (progress === 100) {
+                    clearInterval(loading);
+                    setTimeout(() => {
+                        loader.style.opacity = '0';
+                        setTimeout(() => {
+                            loader.style.display = 'none';
+                            showTab('home');
+                        }, 800);
+                    }, 400);
+                }
+            }, 80);
         });
     </script>
 </body>

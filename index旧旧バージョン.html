@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ノードラボ株式会社 | NODE LAB Inc.</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100;300;500;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00aaff;
+            --neon-glow: rgba(0, 170, 255, 0.6);
+            --bg-dark: #020205;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            color: #ffffff;
+            font-family: 'Noto Sans JP', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        /* Loading Screen */
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            transition: opacity 1.2s cubic-bezier(0.7, 0, 0.3, 1);
+        }
+        .loader-bar {
+            width: 300px;
+            height: 1px;
+            background: rgba(255,255,255,0.03);
+            margin-top: 40px;
+            position: relative;
+        }
+        .loader-progress {
+            position: absolute;
+            height: 100%;
+            width: 0%;
+            background: var(--neon-blue);
+            box-shadow: 0 0 30px var(--neon-blue);
+            transition: width 0.4s ease-out;
+        }
+
+        /* Navigation Bar */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4rem;
+            background: rgba(2, 2, 5, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item {
+            position: relative;
+            padding: 0.5rem 1rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .nav-item:hover, .nav-item.active {
+            color: var(--neon-blue);
+            text-shadow: 0 0 15px var(--neon-glow);
+        }
+        .nav-item::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 0%;
+            height: 2px;
+            background: var(--neon-blue);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateX(-50%);
+        }
+        .nav-item.active::after {
+            width: 80%;
+        }
+
+        /* Main Viewport */
+        #main-viewport {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            padding-top: 80px;
+        }
+
+        /* Tab Transition */
+        .tab-content {
+            display: none;
+            min-height: calc(100vh - 80px);
+            width: 100%;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Chronicle Specific */
+        .history-container {
+            position: relative;
+            width: 100%;
+            margin: 2rem 0;
+            height: 480px;
+        }
+        .history-container::before, .history-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 15%;
+            height: 100%;
+            z-index: 15;
+            pointer-events: none;
+        }
+        .history-container::before {
+            left: 0;
+            background: linear-gradient(90deg, var(--bg-dark), transparent);
+        }
+        .history-container::after {
+            right: 0;
+            background: linear-gradient(-90deg, var(--bg-dark), transparent);
+        }
+
+        .history-viewport {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Main Timeline Connecting Line */
+        .main-timeline-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(0, 170, 255, 0.1) 5%, 
+                rgba(0, 170, 255, 0.6) 50%, 
+                rgba(0, 170, 255, 0.1) 95%, 
+                transparent 100%);
+            width: 100%;
+            transform: translateY(-50%);
+            z-index: 1;
+            box-shadow: 0 0 15px rgba(0, 170, 255, 0.2);
+        }
+
+        .history-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            will-change: transform;
+            z-index: 2;
+        }
+
+        .history-node-wrapper {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 300px;
+        }
+
+        .history-node {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 50%;
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            background: var(--bg-dark);
+            z-index: 10;
+            cursor: pointer;
+        }
+        .history-node.active {
+            background: var(--neon-blue);
+            box-shadow: 0 0 35px var(--neon-blue), 0 0 10px #fff;
+            transform: scale(2.2);
+            border-color: #fff;
+        }
+        
+        /* Vertical line to node */
+        .node-vertical-line {
+            position: absolute;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, var(--neon-blue));
+            z-index: 5;
+            transition: all 0.5s ease;
+        }
+        .node-vertical-line.up {
+            bottom: 50%;
+            height: 120px;
+            background: linear-gradient(to top, var(--neon-blue), transparent);
+        }
+        .node-vertical-line.down {
+            top: 50%;
+            height: 120px;
+            background: linear-gradient(to bottom, var(--neon-blue), transparent);
+        }
+
+        .scroll-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            letter-spacing: 0.4em;
+            color: rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            animation: pulse 2s infinite;
+            z-index: 20;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Reveal Animation */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-action {
+            position: relative;
+            padding: 1rem 2.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        .btn-action:hover {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            background: rgba(0, 170, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loader">
+        <div class="font-orbitron text-3xl font-bold tracking-[0.6em] mb-4">NODE <span class="text-blue-500">LAB</span></div>
+        <div class="loader-bar">
+            <div class="loader-progress" id="progress-bar"></div>
+        </div>
+        <div class="mt-8 text-[10px] text-blue-400 font-mono tracking-[0.4em] uppercase" id="loader-perc">SYNCING TIMELINE: 0%</div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <header class="top-nav">
+        <div class="font-orbitron text-xl font-bold tracking-tighter cursor-pointer group" onclick="switchTab('home')">
+            NODE <span class="text-blue-500 group-hover:text-white transition-all">LAB</span>
+        </div>
+        <nav class="flex space-x-4 lg:space-x-10">
+            <div onclick="switchTab('home')" class="nav-item active" id="nav-home">Home</div>
+            <div onclick="switchTab('vision')" class="nav-item" id="nav-vision">Vision</div>
+            <div onclick="switchTab('history')" class="nav-item" id="nav-history">Chronicle</div>
+            <div onclick="switchTab('tech')" class="nav-item" id="nav-tech">Tech</div>
+        </nav>
+        <div class="hidden md:block">
+            <button class="text-[9px] font-bold tracking-widest uppercase py-2 px-4 border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-all">Secure Sync</button>
+        </div>
+    </header>
+
+    <div id="main-viewport">
+        <!-- Tab: Home -->
+        <div id="tab-home" class="tab-content active justify-center items-center">
+            <div class="container mx-auto px-6 text-center">
+                <div class="reveal mb-6">
+                    <span class="text-[9px] text-blue-400 font-bold tracking-[0.5em] uppercase px-4 py-1 border border-blue-500/20 bg-blue-500/5 rounded-full">Evolution Phase 04</span>
+                </div>
+                <h1 class="text-5xl md:text-8xl font-black mb-12 font-orbitron leading-[1.1]">
+                    MIND OVER<br><span class="text-blue-500">MATTER.</span>
+                </h1>
+                <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed mb-16 reveal">
+                    身体の限界を超え、意識を永遠の循環へ。ノードラボは、個人の知性と経験を保存し、デジタル世界で再起動させる技術を提供します。
+                </p>
+                <div class="flex flex-col sm:flex-row gap-6 justify-center reveal">
+                    <button onclick="switchTab('vision')" class="btn-action">ビジョンを体感する</button>
+                    <button onclick="switchTab('history')" class="btn-action border-blue-500/50 text-blue-400 bg-blue-500/5">全歴史を辿る</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Vision -->
+        <div id="tab-vision" class="tab-content">
+            <div class="container mx-auto px-6 mt-20 max-w-6xl">
+                <div class="grid lg:grid-cols-2 gap-20 items-center">
+                    <div class="reveal">
+                        <h2 class="font-orbitron text-4xl md:text-5xl font-bold mb-10 leading-tight">人類の<span class="text-blue-500">第2段階</span>へ</h2>
+                        <p class="text-gray-300 text-lg font-light leading-relaxed mb-12">
+                            これまでの「自己」は肉体という器に縛られてきました。私たちはその器をデータ・ネットワークへと移し替えることで、物理的な老化や消失という概念を過去のものにします。
+                        </p>
+                        <div class="space-y-10">
+                            <div class="flex gap-6 group">
+                                <div class="w-10 h-10 border border-blue-500/40 flex items-center justify-center font-orbitron text-blue-500 text-xs">01</div>
+                                <div>
+                                    <h4 class="font-bold mb-2 tracking-widest">知性の恒久化</h4>
+                                    <p class="text-sm text-gray-500">個人の知識や感情の揺らぎさえも、高純度なデータとして保存します。</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-6 group">
+                                <div class="w-10 h-10 border border-blue-500/40 flex items-center justify-center font-orbitron text-blue-500 text-xs">02</div>
+                                <div>
+                                    <h4 class="font-bold mb-2 tracking-widest">分散型意識ネットワーク</h4>
+                                    <p class="text-sm text-gray-500">一箇所に留まらない、地球規模で拡張される意識の在り方を提案します。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-12 relative overflow-hidden reveal">
+                        <div class="absolute -right-10 -top-10 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full"></div>
+                        <p class="text-2xl font-light italic leading-snug mb-8">
+                            "死とはデータの欠落である。適切なバックアップと同期があれば、意識は永遠に輝き続ける。"
+                        </p>
+                        <div class="flex items-center gap-4 pt-8 border-t border-white/5">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-900 to-blue-500"></div>
+                            <div>
+                                <div class="text-[10px] font-bold tracking-widest">KYOJI NODE</div>
+                                <div class="text-[8px] text-gray-500 tracking-widest uppercase">Lead Visionary</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: History -->
+        <div id="tab-history" class="tab-content justify-center overflow-hidden">
+            <div class="text-center mt-12 mb-4 reveal">
+                <h2 class="font-orbitron text-4xl font-bold tracking-[0.4em] mb-4">CHRONICLE</h2>
+                <div class="w-20 h-[1px] bg-blue-500 mx-auto opacity-50"></div>
+            </div>
+            
+            <div class="history-container">
+                <div class="history-viewport" id="history-viewport">
+                    <!-- The connecting line is placed inside the viewport but behind the track -->
+                    <div class="main-timeline-line" id="main-timeline-line"></div>
+                    <div class="history-track" id="history-track"></div>
+                    <div class="scroll-hint">
+                        <span class="w-10 h-[1px] bg-white/20"></span>
+                        DRAG OR SCROLL TO EXPLORE
+                        <span class="w-10 h-[1px] bg-white/20"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="history-detail" class="max-w-4xl mx-auto p-12 glass-panel border-l-2 border-blue-500 transition-all duration-700 mb-20 reveal">
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+                    <div>
+                        <span id="hist-year" class="font-orbitron text-5xl text-blue-500 opacity-50 block mb-2">-</span>
+                        <h3 id="hist-title" class="text-3xl font-bold tracking-tight">-</h3>
+                    </div>
+                </div>
+                <p id="hist-desc" class="text-gray-400 text-lg font-light leading-relaxed">-</p>
+            </div>
+        </div>
+
+        <!-- Tab: Tech -->
+        <div id="tab-tech" class="tab-content">
+            <div class="container mx-auto px-6 mt-20 max-w-6xl text-center">
+                <h2 class="font-orbitron text-4xl font-bold tracking-[0.3em] mb-20 reveal">CORE TECH</h2>
+                <div class="grid md:grid-cols-3 gap-10 mb-20">
+                    <div class="glass-panel p-10 hover:border-blue-500/50 transition-all group reveal">
+                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500">T-01</div>
+                        <h4 class="font-bold tracking-widest mb-4">量子スキャン</h4>
+                        <p class="text-sm text-gray-400 font-light">シナプス結合の全パターンを原子レベルで瞬時にデジタル写像化する基幹技術。</p>
+                    </div>
+                    <div class="glass-panel p-10 hover:border-blue-500/50 transition-all group reveal" style="transition-delay: 0.1s;">
+                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500">T-02</div>
+                        <h4 class="font-bold tracking-widest mb-4">意識同期プロトコル</h4>
+                        <p class="text-sm text-gray-400 font-light">仮想空間と現実世界の間で意識の整合性を保つための超低遅延双方向通信。</p>
+                    </div>
+                    <div class="glass-panel p-10 hover:border-blue-500/50 transition-all group reveal" style="transition-delay: 0.2s;">
+                        <div class="text-4xl font-orbitron text-blue-500/20 mb-6 group-hover:text-blue-500">T-03</div>
+                        <h4 class="font-bold tracking-widest mb-4">存在証明レジャー</h4>
+                        <p class="text-sm text-gray-400 font-light">「その意識が本人であること」をデジタル上で永続的に証明する改ざん不能な記録方式。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- WebGL Neural Network Scene ---
+        let scene, camera, renderer, group, points, lines;
+        const particleCount = 200;
+
+        function initWebGL() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.z = 450;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.body.appendChild(renderer.domElement);
+
+            group = new THREE.Group();
+            scene.add(group);
+
+            const pos = new Float32Array(particleCount * 3);
+            for(let i=0; i<particleCount*3; i++) pos[i] = (Math.random() - 0.5) * 1000;
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({ color: 0x00aaff, size: 2.5, transparent: true, opacity: 0.8 });
+            points = new THREE.Points(geo, mat);
+            group.add(points);
+
+            const lGeo = new THREE.BufferGeometry();
+            const lMat = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.15 });
+            lines = new THREE.LineSegments(lGeo, lMat);
+            group.add(lines);
+
+            let mX = 0, mY = 0;
+            window.addEventListener('mousemove', (e) => {
+                mX = (e.clientX - window.innerWidth / 2) * 0.1;
+                mY = (e.clientY - window.innerHeight / 2) * 0.1;
+            });
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+                group.rotation.y += 0.0006;
+                group.rotation.x += 0.0002;
+                camera.position.x += (mX - camera.position.x) * 0.05;
+                camera.position.y += (-mY - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+
+                const posArr = points.geometry.attributes.position.array;
+                const lPos = [];
+                for(let i=0; i<particleCount; i++) {
+                    for(let j=i+1; j<particleCount; j++) {
+                        const d = Math.sqrt(
+                            Math.pow(posArr[i*3] - posArr[j*3], 2) +
+                            Math.pow(posArr[i*3+1] - posArr[j*3+1], 2) +
+                            Math.pow(posArr[i*3+2] - posArr[j*3+2], 2)
+                        );
+                        if(d < 120) {
+                            lPos.push(posArr[i*3], posArr[i*3+1], posArr[i*3+2]);
+                            lPos.push(posArr[j*3], posArr[j*3+1], posArr[j*3+2]);
+                        }
+                    }
+                }
+                lines.geometry.setAttribute('position', new THREE.Float32BufferAttribute(lPos, 3));
+                renderer.render(scene, camera);
+            };
+            animate();
+        }
+
+        // --- History / Chronicle Logic ---
+        const historyData = [
+            { year: "2029", title: "Project: Genesis Mapping", desc: "世界初、非侵襲的量子スキャンにより生体脳の完全なシナプス結合パターンをデータ化することに成功。" },
+            { year: "2034", title: "Neural Sync Alpha", desc: "抽出された意識データと生体脳のリアルタイム同期を確立。被験者は二つの視点を同時に体験することとなった。" },
+            { year: "2041", title: "Identity Freedom Act", desc: "デジタル存在の法的権利が認められる。NODE LABは世界唯一の公認意識保管機関として選出された。" },
+            { year: "2048", title: "The Sovereign Network", desc: "物理サーバーを必要としない、量子もつれを利用した分散型レジャー上の意識保持システムが稼働。" },
+            { year: "2055", title: "Infinite Loop", desc: "肉体の寿命を迎えた後、意識がネットワーク上で完全に再起動。人類は初めて「死」をデータの再配置へと変えた。" }
+        ];
+
+        const track = document.getElementById('history-track');
+        const mainLine = document.getElementById('main-timeline-line');
+        let scrollX = 0;
+        let isDragging = false;
+        let startX = 0;
+        let activeIndex = -1;
+        const nodeSpacing = 450;
+
+        function setupHistory() {
+            track.innerHTML = '';
+            const centerOffset = window.innerWidth / 2;
+            const totalWidth = (historyData.length + 1) * nodeSpacing + window.innerWidth;
+            track.style.width = totalWidth + 'px';
+            mainLine.style.width = totalWidth + 'px';
+
+            historyData.forEach((data, i) => {
+                const x = (i + 1) * nodeSpacing + (centerOffset - nodeSpacing);
+                const wrapper = document.createElement('div');
+                wrapper.className = 'history-node-wrapper';
+                wrapper.style.left = `${x - 150}px`;
+                wrapper.style.top = `0`;
+                wrapper.style.height = `100%`;
+                
+                const isEven = i % 2 === 0;
+                
+                wrapper.innerHTML = `
+                    <div class="node-vertical-line ${isEven ? 'up' : 'down'}"></div>
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <div class="history-node" onclick="snapTo(${i})"></div>
+                        <div class="absolute font-orbitron text-blue-500 font-bold tracking-[0.2em] ${isEven ? '-top-10' : '-bottom-10'}">
+                            ${data.year}
+                        </div>
+                    </div>
+                `;
+                track.appendChild(wrapper);
+            });
+        }
+
+        function snapTo(index) {
+            const centerOffset = window.innerWidth / 2;
+            const targetPos = (index + 1) * nodeSpacing + (centerOffset - nodeSpacing);
+            scrollX = -(targetPos - centerOffset);
+            
+            // Limit scroll
+            const maxScroll = 0;
+            const minScroll = -(track.offsetWidth - window.innerWidth);
+            scrollX = Math.max(minScroll, Math.min(maxScroll, scrollX));
+
+            track.style.transition = 'transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
+            mainLine.style.transition = 'transform 1.2s cubic-bezier(0.16, 1, 0.3, 1)';
+            track.style.transform = `translateX(${scrollX}px)`;
+            mainLine.style.transform = `translateX(${scrollX}px) translateY(-50%)`;
+            updateHistory(index);
+        }
+
+        function updateHistory(forcedIdx) {
+            const centerOffset = window.innerWidth / 2;
+            let idx = forcedIdx;
+            if (idx === undefined) {
+                let minD = Infinity;
+                historyData.forEach((_, i) => {
+                    const nodeX = (i + 1) * nodeSpacing + (centerOffset - nodeSpacing);
+                    const d = Math.abs(nodeX - (-scrollX + centerOffset));
+                    if(d < minD) { minD = d; idx = i; }
+                });
+            }
+            const safeIdx = Math.max(0, Math.min(historyData.length - 1, idx));
+            document.querySelectorAll('.history-node').forEach((n, i) => {
+                n.classList.toggle('active', i === safeIdx);
+            });
+
+            if(safeIdx !== activeIndex) {
+                activeIndex = safeIdx;
+                const d = historyData[activeIndex];
+                const detail = document.getElementById('history-detail');
+                detail.style.opacity = 0;
+                detail.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    document.getElementById('hist-year').innerText = d.year;
+                    document.getElementById('hist-title').innerText = d.title;
+                    document.getElementById('hist-desc').innerText = d.desc;
+                    detail.style.opacity = 1;
+                    detail.style.transform = 'translateY(0)';
+                }, 300);
+            }
+        }
+
+        // --- Viewport Events ---
+        const hViewport = document.getElementById('history-viewport');
+        hViewport.addEventListener('mousedown', (e) => { 
+            isDragging = true; 
+            startX = e.pageX - scrollX; 
+            track.style.transition = 'none'; 
+            mainLine.style.transition = 'none';
+        });
+        window.addEventListener('mouseup', () => { 
+            if(!isDragging) return; 
+            isDragging = false; 
+            snapTo(activeIndex); 
+        });
+        window.addEventListener('mousemove', (e) => { 
+            if(!isDragging) return; 
+            scrollX = e.pageX - startX; 
+            
+            const maxScroll = 100;
+            const minScroll = -(track.offsetWidth - window.innerWidth + 100);
+            scrollX = Math.max(minScroll, Math.min(maxScroll, scrollX));
+
+            track.style.transform = `translateX(${scrollX}px)`; 
+            mainLine.style.transform = `translateX(${scrollX}px) translateY(-50%)`;
+            updateHistory();
+        });
+        hViewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            scrollX -= e.deltaY * 2.0;
+            
+            const maxScroll = 100;
+            const minScroll = -(track.offsetWidth - window.innerWidth + 100);
+            scrollX = Math.max(minScroll, Math.min(maxScroll, scrollX));
+
+            track.style.transition = 'none';
+            mainLine.style.transition = 'none';
+            track.style.transform = `translateX(${scrollX}px)`;
+            mainLine.style.transform = `translateX(${scrollX}px) translateY(-50%)`;
+            updateHistory();
+            
+            clearTimeout(window.snapTimeout);
+            window.snapTimeout = setTimeout(() => snapTo(activeIndex), 150);
+        }, { passive: false });
+
+        // --- Tab Switching ---
+        function switchTab(name) {
+            const currentTab = document.querySelector('.tab-content.active');
+            if(currentTab && currentTab.id === 'tab-'+name) return;
+
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById('nav-'+name).classList.add('active');
+
+            if(currentTab) {
+                currentTab.style.opacity = 0;
+                currentTab.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    currentTab.classList.remove('active');
+                    showNewTab(name);
+                }, 400);
+            } else {
+                showNewTab(name);
+            }
+        }
+
+        function showNewTab(name) {
+            const newTab = document.getElementById('tab-'+name);
+            newTab.classList.add('active');
+            setTimeout(() => {
+                newTab.style.opacity = 1;
+                newTab.style.transform = 'translateY(0)';
+                if(name === 'history') {
+                    setupHistory();
+                    snapTo(0);
+                }
+                handleReveal();
+            }, 50);
+            document.getElementById('main-viewport').scrollTop = 0;
+        }
+
+        function handleReveal() {
+            const reveals = document.querySelectorAll('.reveal');
+            reveals.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight - 50) el.classList.add('visible');
+            });
+        }
+        document.getElementById('main-viewport').addEventListener('scroll', handleReveal);
+
+        // --- Init ---
+        window.onload = () => {
+            let p = 0;
+            const int = setInterval(() => {
+                p += Math.random() * 8;
+                if(p > 100) p = 100;
+                document.getElementById('progress-bar').style.width = p + '%';
+                document.getElementById('loader-perc').innerText = `SYNCING TIMELINE: ${Math.floor(p)}%`;
+                if(p >= 100) {
+                    clearInterval(int);
+                    document.getElementById('loader').style.opacity = 0;
+                    setTimeout(() => {
+                        document.getElementById('loader').style.display = 'none';
+                        switchTab('home');
+                    }, 1200);
+                }
+            }, 40);
+            initWebGL();
+        };
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            if(document.getElementById('tab-history').classList.contains('active')) setupHistory();
+        });
+    </script>
+</body>
+</html>
